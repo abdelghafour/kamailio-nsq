@@ -61,7 +61,7 @@ static int init(void)
 		knsq_pa_db = NULL;
 	}
 
-	int total_workers = 1;
+	int total_workers = 4;
 
 	register_procs(total_workers);
 	cfg_register_child(total_workers);
@@ -78,12 +78,15 @@ static int child_init(int rank)
 		return 0;
 
 	if (rank==PROC_MAIN) {
-		pid=fork_process(2, "NSQ Consumer", 1);
-		LM_ERR("%s:%d, pid %d\n", __FUNCTION__, __LINE__, pid);
-		if (pid<0)
-			return -1; /* error */
-		if(pid==0){
-			nsq_consumer_proc(1);
+		int i;
+		for(i=0; i < 4; i++) {
+			pid=fork_process(i+4, "NSQ Consumer", 1);
+			LM_ERR("%s:%d, pid %d\n", __FUNCTION__, __LINE__, pid);
+			if (pid<0)
+				return -1;
+			if(pid==0){
+				nsq_consumer_proc(i);
+			}
 		}
 	}
 
@@ -92,6 +95,7 @@ static int child_init(int rank)
 		LM_CRIT("child_init: database not bound\n");
 		return -1;
 	}
+
 	knsq_pa_db = knsq_pa_dbf.init(&knsq_db_url);
 	if (!knsq_pa_db)
 	{
